@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#111111"/>
+  <title>WRB Bathroom Checklist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body,#root{height:100%;}
+    body{background:#0f0f0f;font-family:'Barlow',sans-serif;-webkit-font-smoothing:antialiased;}
+    ::-webkit-scrollbar{width:4px;}
+    ::-webkit-scrollbar-track{background:#1a1a1a;}
+    ::-webkit-scrollbar-thumb{background:#C0500A;border-radius:2px;}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes checkPop{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .anim-down{animation:slideDown 0.2s ease forwards;}
+    .anim-up{animation:slideUp 0.35s ease forwards;}
+    .anim-fade{animation:fadeIn 0.3s ease;}
+    .check-pop{animation:checkPop 0.25s ease;}
+    input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.6);}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ─── SOP DATA ─────────────────────────────────────────────────────────────────
+const PHASES = [
+  { id:"ph1", label:"PRE-CONSTRUCTION", num:1, steps:[
+    { id:"s1", num:1, title:"Preliminary Preparation", type:"normal", tasks:[
+      "Confirm contract signed and deposit received",
+      "Finalize all material selections with client",
+      "Order long-lead items (tile, fixtures, vanity, hardware)",
+      "Review plans and scope with all subcontractors",
+      "Issue written POs / subcontracts; confirm sub COIs on file",
+      "Schedule all trades in sequence",
+      "Set up job file with contract, subs, permits, selections",
+      "Send project kickoff communication to client",
+    ]},
+    { id:"s2", num:2, title:"Site Protection", type:"normal", tasks:[
+      "Install plastic sheeting and floor protection (Ram Board)",
+      "Install dust barriers / zip walls at bathroom entry",
+      "Protect adjacent rooms, hallways, and stairways",
+      "Document existing conditions with photos before any work",
+      "Confirm dumpster / haul-off arrangement",
+    ]},
+  ]},
+  { id:"ph2", label:"DEMOLITION", num:2, steps:[
+    { id:"s3", num:3, title:"Demo + Disposal", type:"normal", tasks:[
+      "Shut off water supply at isolation valve",
+      "Shut off electrical circuits at panel",
+      "Remove vanity, toilet, mirror, fixtures, and accessories",
+      "Remove tile (floor and walls)",
+      "Remove drywall / greenboard as required by scope",
+      "Check subfloor for rot or soft spots — report immediately",
+      "Check walls for mold — document and notify client if found",
+      "All demo debris removed daily; dumpster confirmed",
+      "PM photo documentation after demo before rough-in begins",
+    ]},
+  ]},
+  { id:"ph3", label:"ROUGH CONSTRUCTION", num:3, steps:[
+    { id:"s4", num:4, title:"Rough Framing (If Needed)", type:"normal", tasks:[
+      "Repair or replace subfloor before framing begins",
+      "Frame new walls or adjust existing framing",
+      "Install blocking for grab bars, niche, toilet paper holder, vanity",
+      "Frame shower niche or bench if in scope",
+      "Adjust window openings if required",
+    ]},
+    { id:"s5", num:5, title:"Windows", type:"normal", tasks:[
+      "Install or replace window if in scope",
+      "Bathroom window below 60\" from floor must be tempered glass",
+    ]},
+    { id:"s6", num:6, title:"HVAC — Exhaust Fan", type:"normal", tasks:[
+      "Install bathroom exhaust fan",
+      "Hard-pipe duct run to exterior — NO flexible ducts",
+      "Confirm CFM rating meets code for bathroom size",
+    ]},
+    { id:"s7", num:7, title:"Plumbing Rough", type:"normal", tasks:[
+      "Confirm shower drain location before any waterproofing",
+      "Install shower valve rough-in",
+      "Install toilet rough-in",
+      "Install sink rough-in",
+      "Install tub rough-in if applicable",
+      "All rough plumbing materials must be onsite before work begins",
+    ]},
+    { id:"s8", num:8, title:"Electrical Rough", type:"normal", tasks:[
+      "Install GFCI circuit(s) for bathroom",
+      "Wire lighting and exhaust fan circuits",
+      "Wire outlets per code (min. 1 GFCI outlet required)",
+      "Electrician must receive bathroom plans before rough-in",
+    ]},
+  ]},
+  { id:"ph4", label:"INSPECTIONS & ENCLOSURE", num:4, steps:[
+    { id:"s9", num:9, title:"PM Pre-Inspection (Internal)", type:"warning", tasks:[
+      "PM walks the full bathroom rough-in — no surprises",
+      "Verify plumbing: shower valve, toilet rough, sink rough, drain slope correct",
+      "Verify supply lines pressure-tested — no leaks before walls close",
+      "Verify electrical: GFCI circuits wired, exhaust fan circuit run, wiring stapled",
+      "Verify HVAC: exhaust fan hard-piped to exterior — no flex duct, CFM confirmed",
+      "Verify framing: blocking in for grab bars, vanity, niche, toilet paper holder",
+      "Confirm shower drain location correct before waterproofing is applied",
+      "Confirm all sub permits pulled and posted on site",
+      "Photograph all rough-in work before scheduling official inspection",
+      "⛔ DO NOT schedule official inspection until all items above are cleared",
+    ]},
+    { id:"s10", num:10, title:"Rough Inspection", type:"inspection", tasks:[
+      "Schedule plumbing, electrical, HVAC, and framing inspections",
+      "All trades must have completed rough scope before scheduling",
+      "DO NOT close walls or begin waterproofing until inspections pass",
+      "PM present or available by phone during inspections",
+      "Photo-document all rough-in work before walls are closed",
+      "Address any correction items within 48 hrs",
+    ]},
+    { id:"s11", num:11, title:"Insulation", type:"normal", tasks:[
+      "Install insulation after rough inspection approval only",
+      "Insulate exterior walls and ceiling as required",
+    ]},
+    { id:"s12", num:12, title:"Insulation Inspection", type:"inspection", tasks:[
+      "Schedule inspection if not combined with rough inspection",
+      "Do not install wallboard until insulation inspection passes",
+    ]},
+  ]},
+  { id:"ph5", label:"WALL FINISHES", num:5, steps:[
+    { id:"s13", num:13, title:"Wallboard Installation", type:"normal", tasks:[
+      "Install moisture-resistant drywall on non-wet areas",
+      "Install cement backer board in all wet areas",
+    ]},
+    { id:"s14", num:14, title:"Waterproofing", type:"critical", tasks:[
+      "Apply approved waterproofing membrane (Kerdi / RedGard / Wedi)",
+      "Flash all corners and seams with fabric tape + membrane",
+      "Pre-slope shower floor to drain (minimum 1/4\" per foot)",
+      "Flood test shower pan (fill 2\" for 24 hrs) — log result",
+      "⛔ PM must inspect waterproofing before tile begins — GATE",
+    ]},
+    { id:"s15", num:15, title:"Plaster / Taping", type:"normal", tasks:[
+      "Tape seams, apply joint compound, sand surfaces",
+      "Prime all surfaces before painting",
+    ]},
+  ]},
+  { id:"ph6", label:"FINISH INSTALLATIONS", num:6, steps:[
+    { id:"s16", num:16, title:"Doors, Trim & Molding", type:"normal", tasks:[
+      "Install door casing and baseboards",
+      "Match existing trim profile where possible",
+      "Caulk trim to wall — paint-ready",
+    ]},
+    { id:"s17", num:17, title:"Tile Installation", type:"normal", tasks:[
+      "Confirm tile layout and pattern with client before laying",
+      "Install shower floor tile with proper lippage control",
+      "Install shower wall tile — check plumb, level, pattern alignment",
+      "Install bathroom floor tile",
+      "Install niche: level, waterproofed, and tiled",
+      "Confirm grout color with client before grouting",
+      "Apply grout — no haze remaining",
+      "Seal grout (minimum 48 hrs after grouting)",
+      "Caulk ALL inside corners — never grout corners",
+    ]},
+    { id:"s18", num:18, title:"Flooring (If Non-Tile)", type:"normal", tasks:[
+      "Install hardwood, engineered, or LVP outside wet areas if in scope",
+    ]},
+    { id:"s19", num:19, title:"Painting", type:"normal", tasks:[
+      "Apply primer coat to all walls, ceiling, and trim",
+      "Apply minimum 2 finish coats — moisture-resistant paint",
+      "Touch up after trim and fixtures are installed",
+    ]},
+    { id:"s20", num:20, title:"Electrical Finish", type:"normal", tasks:[
+      "Install light fixtures, vanity lights",
+      "Install GFCI outlets and cover plates",
+      "Install exhaust fan cover — test operation",
+      "Test all circuits",
+    ]},
+    { id:"s21", num:21, title:"Plumbing Finish", type:"normal", tasks:[
+      "Install vanity cabinet — level and secured to wall",
+      "Install vanity top / countertop and undermount sink",
+      "Install faucet, drain, and supply lines — test for leaks",
+      "Install toilet: wax ring, supply line, secured, seat installed",
+      "Install shower valve trim, showerhead, and hand shower",
+      "Install tub/shower faucet trim if applicable",
+      "Final caulk: tub/shower to tile, vanity to wall, base of toilet",
+    ]},
+    { id:"s22", num:22, title:"Accessories & Hardware", type:"normal", tasks:[
+      "Install mirror and medicine cabinet — secured to blocking",
+      "Install towel bars, toilet paper holder, robe hooks per layout",
+      "Install shower glass enclosure",
+      "Install door hardware: handle, hinges, door stop",
+    ]},
+  ]},
+  { id:"ph7", label:"PROJECT CLOSEOUT", num:7, steps:[
+    { id:"s23", num:23, title:"Punch List", type:"normal", tasks:[
+      "PM pre-punch QC walkthrough before calling client",
+      "Inspect tile, grout, caulk, paint, fixtures, glass, accessories",
+      "Client final walkthrough — document all items in writing",
+      "Complete all punch list items within 3–5 business days",
+    ]},
+    { id:"s24", num:24, title:"Final Inspection", type:"inspection", tasks:[
+      "Schedule final inspection with building department",
+      "Confirm permit is closed",
+      "Collect lien waivers from all subcontractors",
+    ]},
+    { id:"s25", num:25, title:"Final Cleaning", type:"normal", tasks:[
+      "Remove all dust, debris, tools, and leftover materials",
+      "Clean tile, glass, fixtures, surfaces to client-ready condition",
+    ]},
+    { id:"s26", num:26, title:"Project Completion", type:"normal", tasks:[
+      "Take professional photos of finished project",
+      "Client signs Certificate of Satisfaction",
+      "Provide care & maintenance instructions to client",
+      "Collect final payment after punch list sign-off",
+      "Send review request (Google / Houzz)",
+    ]},
+  ]},
+];
+
+const TYPE_CFG = {
+  normal:     { color:"#C0500A", bg:null,      badge:null },
+  warning:    { color:"#E8763A", bg:"#2a1a0a", badge:"PRE-INSP" },
+  inspection: { color:"#2E86C1", bg:"#0a1a2a", badge:"INSPECTION" },
+  critical:   { color:"#C0392B", bg:"#2a0a0a", badge:"CRITICAL" },
+};
+
+// ─── STORAGE (localStorage — works in any browser) ───────────────────────────
+const KEY_PMS      = "wrb_bath_pms_v1";
+const KEY_PROJECTS = (pm) => `wrb_bath_plist_${pm}`;
+const KEY_PROJECT  = (pm, pid) => `wrb_bath_proj_${pm}_${pid}`;
+
+function lsGet(key) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function freshProject(name, address) {
+  const tasks = {}, steps = {};
+  PHASES.forEach(ph => ph.steps.forEach(st => {
+    tasks[st.id] = st.tasks.map(() => false);
+    steps[st.id] = { startDate:"", completeDate:"", notes:"" };
+  }));
+  return { name, address, createdAt: new Date().toLocaleDateString(), tasks, steps, openPhases:{ph1:true}, openSteps:{} };
+}
+function calcProgress(tasks) {
+  let t=0,d=0;
+  PHASES.forEach(ph=>ph.steps.forEach(st=>st.tasks.forEach((_,i)=>{t++;if(tasks[st.id]?.[i])d++;})));
+  return t===0?0:Math.round((d/t)*100);
+}
+function phasePct(phase, tasks) {
+  let t=0,d=0;
+  phase.steps.forEach(st=>st.tasks.forEach((_,i)=>{t++;if(tasks[st.id]?.[i])d++;}));
+  return t===0?0:Math.round((d/t)*100);
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────────
+function Modal({title, onClose, children}) {
+  return (
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px",animation:"fadeIn 0.2s ease"}}>
+      <div onClick={e=>e.stopPropagation()} className="anim-up" style={{background:"#161616",border:"1px solid #2a2a2a",borderRadius:"12px",width:"100%",maxWidth:"440px",overflow:"hidden"}}>
+        <div style={{background:"#111",padding:"14px 18px",borderBottom:"1px solid #222",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"15px",color:"#e0e0e0",letterSpacing:"1px"}}>{title}</span>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#555",fontSize:"22px",cursor:"pointer",lineHeight:1,padding:"0 4px"}}>×</button>
+        </div>
+        <div style={{padding:"18px"}}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── NOTES MODAL ─────────────────────────────────────────────────────────────
+function NotesModal({step, stepData, onSave, onClose}) {
+  const [notes,setNotes]       = useState(stepData.notes||"");
+  const [start,setStart]       = useState(stepData.startDate||"");
+  const [complete,setComplete] = useState(stepData.completeDate||"");
+  const iStyle = {width:"100%",background:"#0f0f0f",border:"1px solid #2a2a2a",borderRadius:"6px",padding:"8px 10px",color:"#ddd",fontSize:"13px",colorScheme:"dark",outline:"none",fontFamily:"'Barlow',sans-serif"};
+  return (
+    <Modal title={`STEP ${step.num} — ${step.title.toUpperCase()}`} onClose={onClose}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"14px"}}>
+        {[["START DATE",start,setStart],["COMPLETE DATE",complete,setComplete]].map(([l,v,s])=>(
+          <div key={l}>
+            <div style={{color:"#555",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1.5px",marginBottom:"5px"}}>{l}</div>
+            <input type="date" value={v} onChange={e=>s(e.target.value)} style={iStyle}/>
+          </div>
+        ))}
+      </div>
+      <div style={{color:"#555",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1.5px",marginBottom:"6px"}}>FIELD NOTES</div>
+      <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={4} placeholder="Field notes, observations, corrections..."
+        style={{...iStyle,resize:"vertical",lineHeight:1.6,marginBottom:"16px",display:"block"}}/>
+      <div style={{display:"flex",gap:"8px",justifyContent:"flex-end"}}>
+        <button onClick={onClose} style={{padding:"8px 14px",background:"none",border:"1px solid #333",borderRadius:"6px",color:"#888",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1px",cursor:"pointer"}}>CANCEL</button>
+        <button onClick={()=>{onSave({notes,startDate:start,completeDate:complete});onClose();}} style={{padding:"8px 18px",background:"#C0500A",border:"none",borderRadius:"6px",color:"#fff",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"1px",cursor:"pointer"}}>SAVE</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── STEP ROW ─────────────────────────────────────────────────────────────────
+function StepRow({step, tasks, stepData, onToggleTask, onSaveStep, isOpen, onToggleOpen}) {
+  const cfg   = TYPE_CFG[step.type]||TYPE_CFG.normal;
+  const done  = tasks.filter(Boolean).length;
+  const total = tasks.length;
+  const pct   = total===0?0:Math.round((done/total)*100);
+  const full  = pct===100;
+  const [showNotes,setShowNotes] = useState(false);
+  const [animIdx,setAnimIdx]     = useState(null);
+  const hasExtra = stepData.notes||stepData.startDate||stepData.completeDate;
+
+  return (
+    <div style={{borderBottom:"1px solid #1c1c1c"}}>
+      <div onClick={onToggleOpen} style={{display:"flex",alignItems:"center",gap:"10px",padding:"11px 14px",cursor:"pointer",background:isOpen?"#1a1a1a":"transparent",transition:"background 0.15s",WebkitTapHighlightColor:"transparent"}}>
+        <div style={{minWidth:"26px",height:"26px",borderRadius:"5px",background:full?"#C0500A":"#1e1e1e",border:`1px solid ${full?"#C0500A":"#2e2e2e"}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"12px",color:full?"#fff":"#666",flexShrink:0,transition:"all 0.2s"}}>
+          {full?"✓":step.num}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap",marginBottom:"4px"}}>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"13px",color:full?"#555":"#ddd",textDecoration:full?"line-through":"none",letterSpacing:"0.5px"}}>{step.title.toUpperCase()}</span>
+            {cfg.badge&&<span style={{fontSize:"9px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"1px",padding:"2px 5px",borderRadius:"3px",background:cfg.bg||"#222",color:cfg.color,border:`1px solid ${cfg.color}44`}}>{cfg.badge}</span>}
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+            <div style={{flex:1,height:"2px",background:"#222",borderRadius:"1px",overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${pct}%`,background:full?"#C0500A":"#444",transition:"width 0.3s",borderRadius:"1px"}}/>
+            </div>
+            <span style={{fontSize:"10px",color:"#444",fontFamily:"'Barlow Condensed',sans-serif",minWidth:"28px"}}>{done}/{total}</span>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:"6px",flexShrink:0}}>
+          {hasExtra&&<div style={{width:"5px",height:"5px",borderRadius:"50%",background:"#C0500A"}}/>}
+          <span style={{color:"#333",fontSize:"15px",display:"inline-block",transform:isOpen?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
+        </div>
+      </div>
+      {isOpen&&(
+        <div className="anim-down" style={{background:"#0f0f0f",paddingBottom:"6px"}}>
+          {step.tasks.map((task,i)=>{
+            const checked=tasks[i];
+            return (
+              <div key={i} onClick={()=>{setAnimIdx(i);onToggleTask(i);setTimeout(()=>setAnimIdx(null),300);}}
+                style={{display:"flex",alignItems:"flex-start",gap:"10px",padding:"8px 14px 8px 48px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+                <div className={animIdx===i?"check-pop":""} style={{width:"18px",height:"18px",borderRadius:"4px",border:`1.5px solid ${checked?"#C0500A":"#2e2e2e"}`,background:checked?"#C0500A":"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",flexShrink:0,marginTop:"1px"}}>
+                  {checked&&<span style={{color:"#fff",fontSize:"11px"}}>✓</span>}
+                </div>
+                <span style={{fontSize:"13px",color:checked?"#444":"#aaa",textDecoration:checked?"line-through":"none",lineHeight:1.5,transition:"color 0.15s"}}>
+                  {task.startsWith("⛔")?<><span style={{color:"#C0392B"}}>⛔ </span><strong style={{color:checked?"#444":"#E74C3C"}}>{task.slice(2)}</strong></>:task}
+                </span>
+              </div>
+            );
+          })}
+          <div style={{margin:"6px 14px 6px 48px",display:"flex",gap:"6px",alignItems:"center",flexWrap:"wrap"}}>
+            {stepData.startDate&&<span style={{fontSize:"10px",color:"#555",background:"#161616",padding:"2px 8px",borderRadius:"3px",border:"1px solid #222"}}>▶ {stepData.startDate}</span>}
+            {stepData.completeDate&&<span style={{fontSize:"10px",color:"#555",background:"#161616",padding:"2px 8px",borderRadius:"3px",border:"1px solid #222"}}>✓ {stepData.completeDate}</span>}
+            {stepData.notes&&<span style={{fontSize:"11px",color:"#666",fontStyle:"italic",maxWidth:"200px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>"{stepData.notes}"</span>}
+            <button onClick={e=>{e.stopPropagation();setShowNotes(true);}}
+              style={{marginLeft:"auto",padding:"4px 10px",background:"none",border:"1px solid #2a2a2a",borderRadius:"4px",color:"#666",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1px",cursor:"pointer"}}>
+              {hasExtra?"EDIT":"+ NOTES"}
+            </button>
+          </div>
+        </div>
+      )}
+      {showNotes&&<NotesModal step={step} stepData={stepData} onSave={d=>onSaveStep(step.id,d)} onClose={()=>setShowNotes(false)}/>}
+    </div>
+  );
+}
+
+// ─── PHASE CARD ───────────────────────────────────────────────────────────────
+function PhaseCard({phase, tasks, steps, onToggleTask, onSaveStep, isOpen, onToggle, openSteps, onToggleStep}) {
+  const pct=phasePct(phase,tasks), full=pct===100;
+  return (
+    <div style={{background:"#141414",border:`1px solid ${full?"#C0500A44":"#1e1e1e"}`,borderRadius:"10px",overflow:"hidden",marginBottom:"8px",transition:"border-color 0.3s"}}>
+      <div onClick={onToggle} style={{padding:"13px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:"10px",background:isOpen?"#1a1a1a":"transparent",transition:"background 0.15s",WebkitTapHighlightColor:"transparent"}}>
+        <div style={{width:"32px",height:"32px",borderRadius:"7px",background:full?"#C0500A":"#1a1a1a",border:`2px solid ${full?"#C0500A":"#2a2a2a"}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"14px",color:full?"#fff":"#555",flexShrink:0,transition:"all 0.3s"}}>
+          {full?"✓":phase.num}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"14px",color:"#ddd",letterSpacing:"1px",marginBottom:"5px"}}>PHASE {phase.num} — {phase.label}</div>
+          <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+            <div style={{flex:1,height:"4px",background:"#1e1e1e",borderRadius:"2px",overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${pct}%`,background:full?"#C0500A":"linear-gradient(90deg,#8B3A08,#C0500A)",transition:"width 0.4s",borderRadius:"2px"}}/>
+            </div>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"12px",color:full?"#C0500A":"#444",minWidth:"32px",textAlign:"right"}}>{pct}%</span>
+          </div>
+        </div>
+        <span style={{color:"#333",fontSize:"18px",display:"inline-block",transform:isOpen?"rotate(90deg)":"none",transition:"transform 0.2s",flexShrink:0}}>›</span>
+      </div>
+      {isOpen&&(
+        <div className="anim-down">
+          {phase.steps.map(step=>(
+            <StepRow key={step.id} step={step}
+              tasks={tasks[step.id]||[]} stepData={steps[step.id]||{startDate:"",completeDate:"",notes:""}}
+              onToggleTask={i=>onToggleTask(step.id,i)} onSaveStep={onSaveStep}
+              isOpen={!!openSteps[step.id]} onToggleOpen={()=>onToggleStep(step.id)}/>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PROJECT VIEW ─────────────────────────────────────────────────────────────
+function ProjectView({pm, project, projectId, onSave, onBack}) {
+  const [data,setData] = useState(project);
+  const timer = useRef(null);
+
+  useEffect(()=>{
+    clearTimeout(timer.current);
+    timer.current = setTimeout(()=>{ lsSet(KEY_PROJECT(pm,projectId),data); onSave(data); },400);
+  },[data]);
+
+  const toggleTask  = (sid,i) => setData(p=>({...p,tasks:{...p.tasks,[sid]:p.tasks[sid].map((v,j)=>j===i?!v:v)}}));
+  const saveStep    = (sid,d) => setData(p=>({...p,steps:{...p.steps,[sid]:{...p.steps[sid],...d}}}));
+  const togglePhase = id      => setData(p=>({...p,openPhases:{...p.openPhases,[id]:!p.openPhases[id]}}));
+  const toggleStep  = id      => setData(p=>({...p,openSteps:{...p.openSteps,[id]:!p.openSteps[id]}}));
+
+  const overall    = calcProgress(data.tasks);
+  const allSteps   = PHASES.flatMap(p=>p.steps);
+  const doneTasks  = PHASES.flatMap(p=>p.steps.flatMap(s=>s.tasks.map((_,i)=>data.tasks[s.id]?.[i]))).filter(Boolean).length;
+  const totalTasks = PHASES.flatMap(p=>p.steps.flatMap(s=>s.tasks)).length;
+  const doneSteps  = allSteps.filter(s=>data.tasks[s.id]?.every(Boolean)).length;
+  const donePhases = PHASES.filter(p=>phasePct(p,data.tasks)===100).length;
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0f0f0f"}}>
+      <div style={{background:"#111",borderBottom:"2px solid #C0500A",position:"sticky",top:0,zIndex:100}}>
+        <div style={{maxWidth:"680px",margin:"0 auto",padding:"10px 14px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"9px"}}>
+            <button onClick={onBack} style={{background:"none",border:"none",color:"#C0500A",fontSize:"26px",cursor:"pointer",padding:"0",lineHeight:1,WebkitTapHighlightColor:"transparent"}}>‹</button>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"16px",color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.2}}>{data.name}</div>
+              {data.address&&<div style={{fontSize:"11px",color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{data.address}</div>}
+            </div>
+            <div style={{background:"#C0500A",borderRadius:"6px",padding:"4px 10px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"14px",color:"#fff",flexShrink:0}}>{overall}%</div>
+          </div>
+          <div style={{height:"5px",background:"#1e1e1e",borderRadius:"3px",overflow:"hidden",marginBottom:"7px"}}>
+            <div style={{height:"100%",width:`${overall}%`,background:"linear-gradient(90deg,#8B3A08,#C0500A,#E8763A)",transition:"width 0.5s",borderRadius:"3px"}}/>
+          </div>
+          <div style={{display:"flex",gap:"14px",alignItems:"center"}}>
+            {[[`${doneTasks}/${totalTasks}`,"TASKS"],[`${doneSteps}/${allSteps.length}`,"STEPS"],[`${donePhases}/${PHASES.length}`,"PHASES"]].map(([v,l])=>(
+              <div key={l} style={{display:"flex",alignItems:"baseline",gap:"3px"}}>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"13px",color:"#C0500A"}}>{v}</span>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:"10px",color:"#444",letterSpacing:"1px"}}>{l}</span>
+              </div>
+            ))}
+            <span style={{marginLeft:"auto",fontFamily:"'Barlow Condensed',sans-serif",fontSize:"10px",color:"#333",letterSpacing:"1px"}}>PM: {pm.toUpperCase()}</span>
+          </div>
+        </div>
+      </div>
+      <div style={{maxWidth:"680px",margin:"0 auto",padding:"14px"}}>
+        {PHASES.map(phase=>(
+          <PhaseCard key={phase.id} phase={phase} tasks={data.tasks} steps={data.steps}
+            onToggleTask={toggleTask} onSaveStep={saveStep}
+            isOpen={!!data.openPhases[phase.id]} onToggle={()=>togglePhase(phase.id)}
+            openSteps={data.openSteps} onToggleStep={toggleStep}/>
+        ))}
+        {overall===100&&(
+          <div className="anim-fade" style={{background:"linear-gradient(135deg,#1a0d06,#2a1508)",border:"1px solid #C0500A",borderRadius:"10px",padding:"24px",textAlign:"center",marginTop:"8px"}}>
+            <div style={{fontSize:"32px",marginBottom:"8px"}}>🏆</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"22px",color:"#C0500A",letterSpacing:"2px",marginBottom:"4px"}}>PROJECT COMPLETE</div>
+            <div style={{color:"#666",fontSize:"13px"}}>All phases cleared. Outstanding work, {pm}.</div>
+          </div>
+        )}
+        <div style={{height:"40px"}}/>
+      </div>
+    </div>
+  );
+}
+
+// ─── PROJECT LIST ─────────────────────────────────────────────────────────────
+function ProjectList({pm, projects, onSelect, onAdd, onDelete, onSwitchPM}) {
+  const [showAdd,setShowAdd] = useState(false);
+  const [name,setName]       = useState("");
+  const [addr,setAddr]       = useState("");
+
+  function handleAdd() {
+    if(!name.trim()) return;
+    onAdd(name.trim(), addr.trim());
+    setName(""); setAddr(""); setShowAdd(false);
+  }
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0f0f0f"}}>
+      <div style={{background:"#111",borderBottom:"2px solid #C0500A"}}>
+        <div style={{maxWidth:"600px",margin:"0 auto",padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+            <div style={{background:"#C0500A",width:"36px",height:"36px",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"15px",color:"#fff",flexShrink:0}}>WRB</div>
+            <div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"17px",color:"#fff",letterSpacing:"1px",lineHeight:1.1}}>BATHROOM CHECKLIST</div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:"10px",color:"#C0500A",letterSpacing:"2px"}}>WR BUILDERS INC</div>
+            </div>
+          </div>
+          <button onClick={onSwitchPM} style={{background:"none",border:"1px solid #2a2a2a",borderRadius:"6px",padding:"6px 12px",color:"#555",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>SWITCH PM</button>
+        </div>
+      </div>
+      <div style={{maxWidth:"600px",margin:"0 auto",padding:"16px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"18px",padding:"13px 14px",background:"#141414",border:"1px solid #1e1e1e",borderRadius:"8px"}}>
+          <div style={{width:"38px",height:"38px",borderRadius:"50%",background:"#C0500A",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"17px",color:"#fff",flexShrink:0}}>
+            {pm.charAt(0).toUpperCase()}
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"16px",color:"#e0e0e0"}}>{pm}</div>
+            <div style={{fontSize:"11px",color:"#444"}}>{projects.length} active project{projects.length!==1?"s":""}</div>
+          </div>
+          <button onClick={()=>setShowAdd(true)} style={{background:"#C0500A",border:"none",borderRadius:"7px",padding:"9px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"13px",letterSpacing:"1px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>+ NEW PROJECT</button>
+        </div>
+
+        {projects.length===0?(
+          <div style={{textAlign:"center",padding:"56px 0"}}>
+            <div style={{fontSize:"36px",marginBottom:"12px"}}>📋</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:"15px",letterSpacing:"1px",color:"#333",marginBottom:"6px"}}>NO PROJECTS YET</div>
+            <div style={{fontSize:"12px",color:"#2a2a2a"}}>Tap + NEW PROJECT to get started</div>
+          </div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+            {projects.map(proj=>{
+              const pct=calcProgress(proj.data.tasks),full=pct===100;
+              return (
+                <div key={proj.id} onClick={()=>onSelect(proj.id)}
+                  style={{background:"#141414",border:`1px solid ${full?"#C0500A44":"#1e1e1e"}`,borderRadius:"10px",padding:"14px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:"10px",marginBottom:"10px"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"15px",color:"#e0e0e0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:"2px"}}>{proj.data.name}</div>
+                      {proj.data.address&&<div style={{fontSize:"11px",color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj.data.address}</div>}
+                      <div style={{fontSize:"10px",color:"#2a2a2a",marginTop:"2px",fontFamily:"'Barlow Condensed',sans-serif"}}>Created {proj.data.createdAt}</div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:"8px",flexShrink:0}}>
+                      {full&&<span style={{fontSize:"14px"}}>🏆</span>}
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"22px",color:full?"#C0500A":"#ddd",lineHeight:1}}>{pct}%</div>
+                      <button onClick={e=>{e.stopPropagation();if(window.confirm(`Delete "${proj.data.name}"? This cannot be undone.`))onDelete(proj.id);}}
+                        style={{background:"none",border:"1px solid #2a2a2a",borderRadius:"5px",color:"#444",padding:"5px 9px",fontSize:"10px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",WebkitTapHighlightColor:"transparent"}}>DEL</button>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:"3px",marginBottom:"3px"}}>
+                    {PHASES.map(ph=>{const p=phasePct(ph,proj.data.tasks);return(
+                      <div key={ph.id} style={{flex:1,height:"4px",background:"#1e1e1e",borderRadius:"2px",overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${p}%`,background:p===100?"#C0500A":"#444",borderRadius:"2px"}}/>
+                      </div>
+                    );})}
+                  </div>
+                  <div style={{display:"flex",gap:"3px"}}>
+                    {PHASES.map(ph=><div key={ph.id} style={{flex:1,textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:"8px",color:"#2a2a2a"}}>P{ph.num}</div>)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {showAdd&&(
+        <Modal title="NEW PROJECT" onClose={()=>setShowAdd(false)}>
+          <div style={{marginBottom:"12px"}}>
+            <div style={{color:"#555",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1.5px",marginBottom:"6px"}}>PROJECT NAME *</div>
+            <input autoFocus value={name} onChange={e=>setName(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&handleAdd()} placeholder="e.g. Smith Master Bath Reno"
+              style={{width:"100%",background:"#0f0f0f",border:"1px solid #2a2a2a",borderRadius:"6px",padding:"10px 12px",color:"#ddd",fontSize:"14px",outline:"none",fontFamily:"'Barlow',sans-serif",marginBottom:"12px"}}/>
+            <div style={{color:"#555",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1.5px",marginBottom:"6px"}}>JOB ADDRESS (OPTIONAL)</div>
+            <input value={addr} onChange={e=>setAddr(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&handleAdd()} placeholder="e.g. 123 Main St, Newton MA"
+              style={{width:"100%",background:"#0f0f0f",border:"1px solid #2a2a2a",borderRadius:"6px",padding:"10px 12px",color:"#ddd",fontSize:"14px",outline:"none",fontFamily:"'Barlow',sans-serif"}}/>
+          </div>
+          <div style={{display:"flex",gap:"8px",justifyContent:"flex-end",marginTop:"16px"}}>
+            <button onClick={()=>setShowAdd(false)} style={{padding:"9px 14px",background:"none",border:"1px solid #333",borderRadius:"6px",color:"#888",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1px",cursor:"pointer"}}>CANCEL</button>
+            <button onClick={handleAdd} style={{padding:"9px 20px",background:name.trim()?"#C0500A":"#3a2010",border:"none",borderRadius:"6px",color:name.trim()?"#fff":"#666",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"1px",cursor:"pointer",transition:"all 0.2s"}}>CREATE PROJECT</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─── PM LOGIN ─────────────────────────────────────────────────────────────────
+function PMLogin({onSelect}) {
+  const [pms,setPMs]     = useState(null);
+  const [name,setName]   = useState("");
+  const [adding,setAdding] = useState(false);
+
+  useEffect(()=>{ setPMs(lsGet(KEY_PMS)||[]); },[]);
+
+  function addPM() {
+    const n=name.trim(); if(!n||!pms) return;
+    const exists = pms.find(p=>p.toLowerCase()===n.toLowerCase());
+    if(!exists){ const u=[...pms,n]; lsSet(KEY_PMS,u); setPMs(u); }
+    setName(""); setAdding(false); onSelect(exists||n);
+  }
+
+  if(pms===null) return <div style={{minHeight:"100vh",background:"#0f0f0f",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#333",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"3px",fontSize:"13px"}}>LOADING...</span></div>;
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0f0f0f",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px"}}>
+      <div style={{marginBottom:"32px",textAlign:"center"}}>
+        <div style={{background:"#C0500A",width:"60px",height:"60px",borderRadius:"14px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"22px",color:"#fff",margin:"0 auto 14px"}}>WRB</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"22px",color:"#fff",letterSpacing:"2px",lineHeight:1.2}}>BATHROOM PM CHECKLIST</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:"11px",color:"#C0500A",letterSpacing:"3px",marginTop:"4px"}}>WR BUILDERS INC</div>
+      </div>
+      <div style={{width:"100%",maxWidth:"360px"}}>
+        {pms.length>0&&(
+          <>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:"10px",color:"#333",letterSpacing:"2px",marginBottom:"10px",textAlign:"center"}}>SELECT YOUR NAME</div>
+            <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"10px"}}>
+              {pms.map(pm=>(
+                <button key={pm} onClick={()=>onSelect(pm)}
+                  style={{width:"100%",background:"#141414",border:"1px solid #1e1e1e",borderRadius:"8px",padding:"13px 16px",color:"#ddd",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"16px",letterSpacing:"1px",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:"12px",WebkitTapHighlightColor:"transparent"}}>
+                  <div style={{width:"32px",height:"32px",borderRadius:"50%",background:"#C0500A",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px",fontWeight:800,color:"#fff",flexShrink:0}}>{pm.charAt(0).toUpperCase()}</div>
+                  {pm}
+                  <span style={{marginLeft:"auto",color:"#333",fontSize:"18px"}}>›</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        {adding?(
+          <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:"8px",padding:"14px"}}>
+            <input autoFocus value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addPM()} placeholder="Enter your name..."
+              style={{width:"100%",background:"#0f0f0f",border:"1px solid #2a2a2a",borderRadius:"6px",padding:"11px 12px",color:"#ddd",fontSize:"15px",outline:"none",fontFamily:"'Barlow',sans-serif",marginBottom:"10px"}}/>
+            <div style={{display:"flex",gap:"6px"}}>
+              <button onClick={()=>{setAdding(false);setName("");}} style={{flex:1,padding:"10px",background:"none",border:"1px solid #2a2a2a",borderRadius:"6px",color:"#666",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1px",cursor:"pointer"}}>CANCEL</button>
+              <button onClick={addPM} style={{flex:2,padding:"10px",background:name.trim()?"#C0500A":"#3a2010",border:"none",borderRadius:"6px",color:name.trim()?"#fff":"#555",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"1px",cursor:"pointer"}}>CONTINUE →</button>
+            </div>
+          </div>
+        ):(
+          <button onClick={()=>setAdding(true)}
+            style={{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:"8px",padding:"13px",color:"#444",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"13px",letterSpacing:"1.5px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+            + ADD NEW PM
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── ROOT APP ─────────────────────────────────────────────────────────────────
+function App() {
+  const [pm,setPM]             = useState(()=>sessionStorage.getItem("wrb_session_pm")||null);
+  const [projects,setProjects] = useState(null);
+  const [activeId,setActiveId] = useState(null);
+
+  useEffect(()=>{
+    if(!pm){ setProjects(null); setActiveId(null); return; }
+    sessionStorage.setItem("wrb_session_pm", pm);
+    const ids = lsGet(KEY_PROJECTS(pm))||[];
+    const loaded = ids.map(id=>({id, data:lsGet(KEY_PROJECT(pm,id))})).filter(p=>p.data!==null);
+    setProjects(loaded);
+  },[pm]);
+
+  function addProject(name,address){
+    const id=`p_${Date.now()}`;
+    const data=freshProject(name,address);
+    lsSet(KEY_PROJECT(pm,id),data);
+    const existing=lsGet(KEY_PROJECTS(pm))||[];
+    lsSet(KEY_PROJECTS(pm),[...existing,id]);
+    setProjects(prev=>[...(prev||[]),{id,data}]);
+    setActiveId(id);
+  }
+
+  function deleteProject(id){
+    const updated=projects.filter(p=>p.id!==id);
+    setProjects(updated);
+    lsSet(KEY_PROJECTS(pm),updated.map(p=>p.id));
+  }
+
+  function updateProject(id,data){
+    setProjects(prev=>prev.map(p=>p.id===id?{...p,data}:p));
+  }
+
+  function switchPM(){
+    sessionStorage.removeItem("wrb_session_pm");
+    setPM(null);
+  }
+
+  if(!pm) return <PMLogin onSelect={setPM}/>;
+  if(!projects) return <div style={{minHeight:"100vh",background:"#0f0f0f",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#333",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"3px",fontSize:"13px",animation:"pulse 1.5s infinite"}}>LOADING...</span></div>;
+
+  if(activeId){
+    const proj=projects.find(p=>p.id===activeId);
+    if(!proj){setActiveId(null);return null;}
+    return <ProjectView pm={pm} project={proj.data} projectId={proj.id} onSave={d=>updateProject(proj.id,d)} onBack={()=>setActiveId(null)}/>;
+  }
+
+  return <ProjectList pm={pm} projects={projects} onSelect={setActiveId} onAdd={addProject} onDelete={deleteProject} onSwitchPM={switchPM}/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

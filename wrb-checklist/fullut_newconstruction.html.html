@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#111111"/>
+  <title>WRB Full Gut / New Construction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body,#root{height:100%;}
+    body{background:#0f0f0f;font-family:'Barlow',sans-serif;-webkit-font-smoothing:antialiased;}
+    ::-webkit-scrollbar{width:4px;}
+    ::-webkit-scrollbar-track{background:#1a1a1a;}
+    ::-webkit-scrollbar-thumb{background:#C0500A;border-radius:2px;}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes checkPop{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .anim-down{animation:slideDown 0.2s ease forwards;}
+    .anim-up{animation:slideUp 0.35s ease forwards;}
+    .anim-fade{animation:fadeIn 0.3s ease;}
+    .check-pop{animation:checkPop 0.25s ease;}
+    input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.6);}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const ACCENT  = "#C0500A";
+const ACCENT2 = "#E8763A";
+
+const PHASES = [
+  { id:"ph1", label:"PRE-CONSTRUCTION", num:1, steps:[
+    { id:"s1", num:1, title:"Preliminary Preparation", type:"normal", tasks:[
+      "Confirm contract signed and full deposit / draw schedule received",
+      "Confirm all permits applied for: building, electrical, plumbing, HVAC",
+      "Obtain stamped architectural plans if required",
+      "Confirm HOA approvals obtained if applicable",
+      "Review full scope with all subcontractors — issue written POs",
+      "Confirm all sub COIs are on file before any work begins",
+      "Schedule all trades in full sequence from demo through closeout",
+      "Establish site logistics: dumpster location, material staging, site access",
+      "Set up job file: digital folder with contract, permits, plans, subs, selections",
+      "Send project kickoff communication to client with schedule",
+      "Order all long-lead items: windows, doors, cabinets, appliances",
+    ]},
+    { id:"s2", num:2, title:"Survey & Architectural", type:"normal", tasks:[
+      "Confirm property survey on file — no encroachments",
+      "Architect / designer stamped plans approved and on site",
+      "Confirm all structural engineering drawings on file",
+      "Verify setbacks and zoning compliance",
+      "Confirm utility locate completed before any excavation",
+    ]},
+    { id:"s3", num:3, title:"Foundation (If Applicable)", type:"warning", tasks:[
+      "Excavation complete — depth and bearing soil confirmed",
+      "Footings formed, rebar placed, inspected before pour",
+      "Footing inspection passed ✓",
+      "Foundation walls formed or block laid",
+      "⛔ Affidavit A required — confirm with architect before proceeding",
+      "Foundation waterproofing applied",
+      "Drainage tile and stone installed",
+      "Foundation inspection passed ✓",
+      "Backfill only after foundation reaches full cure (7 days minimum)",
+    ]},
+  ]},
+  { id:"ph2", label:"ROUGH CONSTRUCTION", num:2, steps:[
+    { id:"s4", num:4, title:"Demolition", type:"normal", tasks:[
+      "Shut off all utilities: water, gas, electric at mains",
+      "Asbestos / lead paint testing completed if pre-1980 structure",
+      "Demo scope confirmed in writing — no surprises",
+      "Remove all interior finishes: flooring, drywall, ceilings",
+      "Remove all fixtures, cabinets, and appliances",
+      "Structural walls confirmed with engineer before removal",
+      "Selective demo of exterior elements as required by scope",
+      "All debris removed daily — dumpster confirmed and scheduled",
+      "PM photo documentation of all existing conditions after demo",
+    ]},
+    { id:"s5", num:5, title:"Rough Framing", type:"normal", tasks:[
+      "Repair or replace sill plate if damaged",
+      "Frame all new walls per architectural plans",
+      "Frame all interior partitions, closets, chases",
+      "Install all headers at proper size over all openings",
+      "Frame all ceiling and floor systems per engineering",
+      "Install blocking for: grab bars, TV mounts, cabinets, railings, fixtures",
+      "Frame staircase if in scope",
+      "Framing inspection passed ✓",
+    ]},
+    { id:"s6", num:6, title:"Roofing", type:"normal", tasks:[
+      "Install roof decking (OSB or plywood) per engineering",
+      "Install ice & water shield at eaves, valleys, and penetrations",
+      "Install roofing felt / synthetic underlayment",
+      "Install all flashing: step, counter, chimney, valley",
+      "Install roofing material (shingles, metal, tile) per spec",
+      "Install ridge vents or box vents per ventilation calculation",
+      "Install all roof penetration boots and seal",
+      "Final roof inspection — no exposed fasteners or gaps",
+    ]},
+    { id:"s7", num:7, title:"Siding & Exterior", type:"normal", tasks:[
+      "Install housewrap / weather-resistant barrier over sheathing",
+      "Flash all windows, doors, and penetrations before siding",
+      "Install siding per manufacturer specs (vinyl, hardie, wood, etc.)",
+      "Install exterior trim: corner boards, frieze, rake, fascia",
+      "Caulk all joints and penetrations in exterior envelope",
+      "Install soffit and fascia — confirm proper attic ventilation",
+    ]},
+    { id:"s8", num:8, title:"Windows & Exterior Doors", type:"normal", tasks:[
+      "Install all windows — plumb, level, square, and shimmed",
+      "Flash all windows per manufacturer instructions",
+      "Install exterior doors — plumb, level, and properly weatherstripped",
+      "Install exterior door hardware: locksets, deadbolts",
+      "Confirm all windows operate correctly — screens installed",
+      "Confirm all IGU units are intact — no fogging or damage",
+    ]},
+    { id:"s9", num:9, title:"HVAC Rough", type:"normal", tasks:[
+      "Install all ductwork runs — supply and return",
+      "Install all HVAC equipment rough: AHU, furnace, condenser pad",
+      "Size all duct runs per Manual J / D calculations",
+      "Install all bathroom and kitchen exhaust runs to exterior",
+      "Install dryer duct run to exterior — hard pipe only",
+      "Install ERV / HRV if in scope",
+      "Coordinate equipment location with electrical and plumbing",
+    ]},
+    { id:"s10", num:10, title:"Plumbing Rough", type:"normal", tasks:[
+      "Install all drain, waste, and vent (DWV) piping",
+      "Install all water supply rough — hot and cold",
+      "Pressure test DWV system — confirm no leaks",
+      "Pressure test supply system — confirm no leaks",
+      "Install all fixture rough-ins: tubs, showers, toilets, sinks",
+      "Install water heater rough or tankless unit rough",
+      "Install gas piping if applicable — pressure tested",
+      "Coordinate all penetrations with framing and HVAC",
+    ]},
+    { id:"s11", num:11, title:"Electrical Rough", type:"normal", tasks:[
+      "Install electrical panel — properly sized for full load",
+      "Run all circuits per electrical plan",
+      "Install all dedicated circuits: kitchen, bathrooms, HVAC, appliances",
+      "Install all low-voltage rough: data, coax, audio, security",
+      "Install all outlet, switch, and fixture boxes at correct heights",
+      "All wiring stapled, protected through plates at framing",
+      "Electrician must have final plans before rough-in begins",
+    ]},
+  ]},
+  { id:"ph3", label:"AFFIDAVIT B & INSPECTIONS", num:3, steps:[
+    { id:"s12", num:12, title:"PM Pre-Inspection (Internal)", type:"warning", tasks:[
+      "PM walks full rough-in of entire project before calling inspector",
+      "Verify framing: all headers correct size, blocking installed, staircase complete",
+      "Verify roofing: all penetrations sealed, flashing complete",
+      "Verify plumbing: DWV pressure tested, supply tested, no leaks",
+      "Verify HVAC: all ducts run, exhausts to exterior, equipment located",
+      "Verify electrical: all circuits run, dedicated circuits confirmed, boxes set",
+      "Confirm all sub permits pulled and inspection cards posted on site",
+      "Photograph all rough-in work in every room before scheduling",
+      "⛔ Affidavit B required — confirm with architect before inspection",
+      "⛔ DO NOT schedule official inspection until all items above are cleared",
+    ]},
+    { id:"s13", num:13, title:"Rough Inspection", type:"inspection", tasks:[
+      "Schedule framing, plumbing, electrical, and HVAC inspections",
+      "All trades must have completed rough scope before scheduling",
+      "DO NOT close walls until ALL inspections pass",
+      "PM must be present or available during all inspections",
+      "Address all correction items within 48 hours",
+      "Re-inspection scheduled immediately after corrections complete",
+    ]},
+    { id:"s14", num:14, title:"Insulation", type:"normal", tasks:[
+      "Install insulation only after rough inspections pass",
+      "Insulate all exterior walls — confirm R-value per energy code",
+      "Insulate all ceilings / roof assembly per energy code",
+      "Install rim joist insulation",
+      "Install sound insulation in interior walls: bedrooms, bathrooms",
+      "Seal all air bypasses before insulating — energy code requirement",
+    ]},
+    { id:"s15", num:15, title:"Insulation Inspection", type:"inspection", tasks:[
+      "Schedule insulation inspection — required before drywall",
+      "Energy code compliance confirmed",
+      "Do not install wallboard until insulation inspection passes",
+    ]},
+  ]},
+  { id:"ph4", label:"INTERIOR FINISHES — PHASE 1", num:4, steps:[
+    { id:"s16", num:16, title:"Wallboard & Plaster", type:"normal", tasks:[
+      "Install drywall — 5/8\" Type X at garage walls and ceilings (fire code)",
+      "Install moisture-resistant drywall in all bathrooms and laundry",
+      "Install cement backer board in all wet areas",
+      "Tape, float, and sand minimum 3 coats",
+      "Texture walls if specified",
+      "Prime all surfaces before painting",
+    ]},
+    { id:"s17", num:17, title:"Doors & Interior Trim", type:"normal", tasks:[
+      "Hang all interior doors — plumb, level, gap consistent",
+      "Install all door casing — both sides",
+      "Install all base molding throughout",
+      "Install crown molding if in scope",
+      "Install window stools, aprons, and casing",
+      "Install stair railings, balusters, and newel posts",
+      "All trim must be nailed, filled, and sanded — ready for paint",
+    ]},
+    { id:"s18", num:18, title:"Tile Work", type:"normal", tasks:[
+      "Install waterproofing membrane in all shower and tub areas",
+      "Flood test all shower pans — 24 hrs, log result",
+      "⛔ PM must inspect waterproofing before any tile begins",
+      "Install all bathroom floor tile",
+      "Install all shower wall tile — check plumb, level, pattern",
+      "Install all kitchen backsplash tile",
+      "Install tile in laundry, mudroom, and other areas per scope",
+      "Grout all tile — confirm color with client",
+      "Seal all grout minimum 48 hrs after grouting",
+      "Caulk all inside corners — never grout corners",
+    ]},
+    { id:"s19", num:19, title:"Flooring", type:"normal", tasks:[
+      "Install hardwood, engineered wood, or LVP per scope",
+      "Confirm acclimation period complete before installation",
+      "Install flooring transitions at all room entries",
+      "Sand and finish hardwood if site-finished",
+      "Install carpet in bedrooms if in scope",
+      "Install base shoe / quarter round at all transitions",
+    ]},
+  ]},
+  { id:"ph5", label:"INTERIOR FINISHES — PHASE 2", num:5, steps:[
+    { id:"s20", num:20, title:"Painting", type:"normal", tasks:[
+      "Prime all walls, ceilings, and trim",
+      "Apply minimum 2 finish coats — walls and ceilings",
+      "Apply minimum 2 finish coats — all trim (semi-gloss)",
+      "Paint all doors — both sides and edges",
+      "Confirm paint colors per room with client before painting",
+      "Touch up after all fixtures and hardware installed",
+    ]},
+    { id:"s21", num:21, title:"Cabinet Installation", type:"normal", tasks:[
+      "Confirm all cabinets delivered and inspected before install",
+      "Install kitchen upper and base cabinets — level, plumb, shimmed",
+      "Install all bathroom vanity cabinets",
+      "Install all built-ins, entertainment centers, closet systems per scope",
+      "Install cabinet crown molding and light rail",
+      "PM inspect all cabinets before countertop template is scheduled",
+    ]},
+    { id:"s22", num:22, title:"Countertops", type:"normal", tasks:[
+      "Schedule countertop template after cabinets installed and confirmed level",
+      "Confirm edge profile, finish, and sink cutout with client at template",
+      "Typical fabrication: 7–14 business days after template",
+      "Install countertops — level, no gaps, overhang consistent",
+      "Install undermount sinks at time of countertop set",
+      "Caulk countertop to wall — no grout at this joint",
+    ]},
+    { id:"s23", num:23, title:"Electrical Finish", type:"normal", tasks:[
+      "Install all light fixtures throughout",
+      "Install all outlets, switches, and cover plates",
+      "Install panel circuits — label all breakers",
+      "Install all appliance connections: range, oven, dishwasher, dryer",
+      "Install all low-voltage finish: data ports, coax, audio",
+      "Test all circuits — confirm GFCI and AFCI function",
+      "Install doorbell and exterior lighting",
+    ]},
+    { id:"s24", num:24, title:"Plumbing Finish", type:"normal", tasks:[
+      "Install all faucets and supply lines — test for leaks",
+      "Install all toilets — wax ring, supply line, seat",
+      "Install all shower and tub trim, valves, and heads",
+      "Install water heater — connect and test",
+      "Install garbage disposals",
+      "Connect dishwashers",
+      "Install all laundry connections",
+      "Final pressure test — confirm no leaks anywhere",
+    ]},
+    { id:"s25", num:25, title:"HVAC Finish", type:"normal", tasks:[
+      "Install all supply and return grilles and registers",
+      "Install thermostats — program and test",
+      "Install all exhaust fan covers and grilles — test operation",
+      "Start up HVAC equipment — confirm operation in all zones",
+      "Balance airflow throughout — all rooms getting supply",
+      "Install dryer vent cover on exterior",
+    ]},
+    { id:"s26", num:26, title:"Appliances", type:"normal", tasks:[
+      "Install range / cooktop — test gas if applicable",
+      "Install wall oven if in scope",
+      "Install refrigerator — connect ice maker line",
+      "Install microwave or range hood",
+      "Install washer and dryer if in scope",
+      "Run all appliances through first cycle — confirm operation",
+    ]},
+  ]},
+  { id:"ph6", label:"EXTERIOR WORK", num:6, steps:[
+    { id:"s27", num:27, title:"Deck & Pergola", type:"normal", tasks:[
+      "Install deck footings — inspected before pour if required",
+      "Install deck framing — ledger properly flashed and lagged",
+      "Install deck boards — gap consistent, properly fastened",
+      "Install deck railing — 36\" or 42\" height per code",
+      "Install pergola or covered structure if in scope",
+      "Seal or stain all exterior wood",
+    ]},
+    { id:"s28", num:28, title:"Landscaping & Grading", type:"normal", tasks:[
+      "Final grade — slope away from foundation (6\" over 10 feet minimum)",
+      "Install loam and seed or sod",
+      "Install plantings and mulch beds per landscape plan",
+      "Install irrigation system if in scope",
+      "Install driveway and walkways per scope",
+      "Install retaining walls if required",
+      "All construction debris removed from site",
+    ]},
+  ]},
+  { id:"ph7", label:"PROJECT CLOSEOUT", num:7, steps:[
+    { id:"s29", num:29, title:"Punch List", type:"normal", tasks:[
+      "PM full pre-punch walkthrough — every room, inside and out",
+      "Inspect all paint: no drips, holidays, or uneven sheen",
+      "Inspect all trim: no gaps, nail holes filled, caulk lines clean",
+      "Inspect all tile: no cracks, grout complete, corners caulked",
+      "Inspect all cabinets: doors aligned, drawers smooth, hardware tight",
+      "Inspect all plumbing fixtures: no leaks, all functional",
+      "Inspect all electrical: all plates on, lights working, GFCI tested",
+      "Inspect all HVAC: all grilles in place, system operational",
+      "Inspect exterior: grading correct, landscaping complete, no damage",
+      "Client final walkthrough — document ALL items in writing",
+      "Complete all punch list items within 5–7 business days",
+    ]},
+    { id:"s30", num:30, title:"Final Inspection", type:"inspection", tasks:[
+      "Schedule final building inspection with building department",
+      "Confirm Certificate of Occupancy (CO) is issued",
+      "Confirm all sub-permits are closed",
+      "Collect lien waivers from ALL subcontractors and suppliers",
+    ]},
+    { id:"s31", num:31, title:"Final Cleaning", type:"normal", tasks:[
+      "Professional construction clean — entire structure inside and out",
+      "Clean all windows inside and out",
+      "Clean inside all cabinets and drawers",
+      "Clean all appliances inside and out",
+      "Remove all protective floor covering and tape",
+      "Pressure wash exterior if needed",
+    ]},
+    { id:"s32", num:32, title:"Project Completion", type:"normal", tasks:[
+      "Take professional photos of finished project — full interior and exterior",
+      "Client signs Certificate of Satisfaction",
+      "Provide all appliance manuals and warranty documents",
+      "Provide maintenance schedule for all systems",
+      "Provide paint colors, cabinet specs, and material info to client",
+      "Collect final payment after punch list sign-off and CO issued",
+      "Send review request (Google / Houzz)",
+    ]},
+  ]},
+];
+
+const TYPE_CFG = {
+  normal:     { color:ACCENT,    bg:null,       badge:null },
+  warning:    { color:"#E8763A", bg:"#2a1a0a",  badge:"AFFIDAVIT / PRE-INSP" },
+  inspection: { color:"#2E86C1", bg:"#0a1a2a",  badge:"INSPECTION" },
+  critical:   { color:"#C0392B", bg:"#2a0a0a",  badge:"CRITICAL" },
+};
+
+const KEY_PMS      = "wrb_fg_pms_v1";
+const KEY_PROJECTS = (pm) => `wrb_fg_plist_${pm}`;
+const KEY_PROJECT  = (pm, pid) => `wrb_fg_proj_${pm}_${pid}`;
+
+function lsGet(k){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;} }
+function lsSet(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch{} }
+
+function freshProject(name,address){
+  const tasks={},steps={};
+  PHASES.forEach(ph=>ph.steps.forEach(st=>{
+    tasks[st.id]=st.tasks.map(()=>false);
+    steps[st.id]={startDate:"",completeDate:"",notes:""};
+  }));
+  return{name,address,createdAt:new Date().toLocaleDateString(),tasks,steps,openPhases:{ph1:true},openSteps:{}};
+}
+function calcProgress(tasks){
+  let t=0,d=0;
+  PHASES.forEach(ph=>ph.steps.forEach(st=>st.tasks.forEach((_,i)=>{t++;if(tasks[st.id]?.[i])d++;})));
+  return t===0?0:Math.round((d/t)*100);
+}
+function phasePct(phase,tasks){
+  let t=0,d=0;
+  phase.steps.forEach(st=>st.tasks.forEach((_,i)=>{t++;if(tasks[st.id]?.[i])d++;}));
+  return t===0?0:Math.round((d/t)*100);
+}
+
+function Modal({title,onClose,children}){
+  return(
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px",animation:"fadeIn 0.2s ease"}}>
+      <div onClick={e=>e.stopPropagation()} className="anim-up" style={{background:"#161616",border:"1px solid #2a2a2a",borderRadius:"12px",width:"100%",maxWidth:"440px",overflow:"hidden"}}>
+        <div style={{background:"#111",padding:"14px 18px",borderBottom:"1px solid #222",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"15px",color:"#e0e0e0",letterSpacing:"1px"}}>{title}</span>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#555",fontSize:"22px",cursor:"pointer",lineHeight:1,padding:"0 4px"}}>×</button>
+        </div>
+        <div style={{padding:"18px"}}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function NotesModal({step,stepData,onSave,onClose}){
+  const [notes,setNotes]=useState(stepData.notes||"");
+  const [start,setStart]=useState(stepData.startDate||"");
+  const [complete,setComplete]=useState(stepData.completeDate||"");
+  const iStyle={width:"100%",background:"#0f0f0f",border:"1px solid #2a2a2a",borderRadius:"6px",padding:"8px 10px",color:"#ddd",fontSize:"13px",colorScheme:"dark",outline:"none",fontFamily:"'Barlow',sans-serif"};
+  return(
+    <Modal title={`STEP ${step.num} — ${step.title.toUpperCase()}`} onClose={onClose}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"14px"}}>
+        {[["START DATE",start,setStart],["COMPLETE DATE",complete,setComplete]].map(([l,v,s])=>(
+          <div key={l}>
+            <div style={{color:"#555",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1.5px",marginBottom:"5px"}}>{l}</div>
+            <input type="date" value={v} onChange={e=>s(e.target.value)} style={iStyle}/>
+          </div>
+        ))}
+      </div>
+      <div style={{color:"#555",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1.5px",marginBottom:"6px"}}>FIELD NOTES</div>
+      <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={4} placeholder="Field notes, observations, corrections..."
+        style={{...iStyle,resize:"vertical",lineHeight:1.6,marginBottom:"16px",display:"block"}}/>
+      <div style={{display:"flex",gap:"8px",justifyContent:"flex-end"}}>
+        <button onClick={onClose} style={{padding:"8px 14px",background:"none",border:"1px solid #333",borderRadius:"6px",color:"#888",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1px",cursor:"pointer"}}>CANCEL</button>
+        <button onClick={()=>{onSave({notes,startDate:start,completeDate:complete});onClose();}} style={{padding:"8px 18px",background:ACCENT,border:"none",borderRadius:"6px",color:"#fff",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"1px",cursor:"pointer"}}>SAVE</button>
+      </div>
+    </Modal>
+  );
+}
+
+function StepRow({step,tasks,stepData,onToggleTask,onSaveStep,isOpen,onToggleOpen}){
+  const cfg=TYPE_CFG[step.type]||TYPE_CFG.normal;
+  const done=tasks.filter(Boolean).length,total=tasks.length;
+  const pct=total===0?0:Math.round((done/total)*100),full=pct===100;
+  const [showNotes,setShowNotes]=useState(false);
+  const [animIdx,setAnimIdx]=useState(null);
+  const hasExtra=stepData.notes||stepData.startDate||stepData.completeDate;
+  return(
+    <div style={{borderBottom:"1px solid #1c1c1c"}}>
+      <div onClick={onToggleOpen} style={{display:"flex",alignItems:"center",gap:"10px",padding:"11px 14px",cursor:"pointer",background:isOpen?"#1a1a1a":"transparent",transition:"background 0.15s",WebkitTapHighlightColor:"transparent"}}>
+        <div style={{minWidth:"26px",height:"26px",borderRadius:"5px",background:full?ACCENT:"#1e1e1e",border:`1px solid ${full?ACCENT:"#2e2e2e"}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"12px",color:full?"#fff":"#666",flexShrink:0,transition:"all 0.2s"}}>
+          {full?"✓":step.num}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap",marginBottom:"4px"}}>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"13px",color:full?"#555":"#ddd",textDecoration:full?"line-through":"none",letterSpacing:"0.5px"}}>{step.title.toUpperCase()}</span>
+            {cfg.badge&&<span style={{fontSize:"9px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"1px",padding:"2px 5px",borderRadius:"3px",background:cfg.bg||"#222",color:cfg.color,border:`1px solid ${cfg.color}44`}}>{cfg.badge}</span>}
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+            <div style={{flex:1,height:"2px",background:"#222",borderRadius:"1px",overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${pct}%`,background:full?ACCENT:"#444",transition:"width 0.3s",borderRadius:"1px"}}/>
+            </div>
+            <span style={{fontSize:"10px",color:"#444",fontFamily:"'Barlow Condensed',sans-serif",minWidth:"28px"}}>{done}/{total}</span>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:"6px",flexShrink:0}}>
+          {hasExtra&&<div style={{width:"5px",height:"5px",borderRadius:"50%",background:ACCENT}}/>}
+          <span style={{color:"#333",fontSize:"15px",display:"inline-block",transform:isOpen?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
+        </div>
+      </div>
+      {isOpen&&(
+        <div className="anim-down" style={{background:"#0f0f0f",paddingBottom:"6px"}}>
+          {step.tasks.map((task,i)=>{
+            const checked=tasks[i];
+            return(
+              <div key={i} onClick={()=>{setAnimIdx(i);onToggleTask(i);setTimeout(()=>setAnimIdx(null),300);}}
+                style={{display:"flex",alignItems:"flex-start",gap:"10px",padding:"8px 14px 8px 48px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+                <div className={animIdx===i?"check-pop":""} style={{width:"18px",height:"18px",borderRadius:"4px",border:`1.5px solid ${checked?ACCENT:"#2e2e2e"}`,background:checked?ACCENT:"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",flexShrink:0,marginTop:"1px"}}>
+                  {checked&&<span style={{color:"#fff",fontSize:"11px"}}>✓</span>}
+                </div>
+                <span style={{fontSize:"13px",color:checked?"#444":"#aaa",textDecoration:checked?"line-through":"none",lineHeight:1.5,transition:"color 0.15s"}}>
+                  {task.startsWith("⛔")?<><span style={{color:"#C0392B"}}>⛔ </span><strong style={{color:checked?"#444":"#E74C3C"}}>{task.slice(2)}</strong></>:task}
+                </span>
+              </div>
+            );
+          })}
+          <div style={{margin:"6px 14px 6px 48px",display:"flex",gap:"6px",alignItems:"center",flexWrap:"wrap"}}>
+            {stepData.startDate&&<span style={{fontSize:"10px",color:"#555",background:"#161616",padding:"2px 8px",borderRadius:"3px",border:"1px solid #222"}}>▶ {stepData.startDate}</span>}
+            {stepData.completeDate&&<span style={{fontSize:"10px",color:"#555",background:"#161616",padding:"2px 8px",borderRadius:"3px",border:"1px solid #222"}}>✓ {stepData.completeDate}</span>}
+            {stepData.notes&&<span style={{fontSize:"11px",color:"#666",fontStyle:"italic",maxWidth:"200px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>"{stepData.notes}"</span>}
+            <button onClick={e=>{e.stopPropagation();setShowNotes(true);}} style={{marginLeft:"auto",padding:"4px 10px",background:"none",border:"1px solid #2a2a2a",borderRadius:"4px",color:"#666",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1px",cursor:"pointer"}}>
+              {hasExtra?"EDIT":"+ NOTES"}
+            </button>
+          </div>
+        </div>
+      )}
+      {showNotes&&<NotesModal step={step} stepData={stepData} onSave={d=>onSaveStep(step.id,d)} onClose={()=>setShowNotes(false)}/>}
+    </div>
+  );
+}
+
+function PhaseCard({phase,tasks,steps,onToggleTask,onSaveStep,isOpen,onToggle,openSteps,onToggleStep}){
+  const pct=phasePct(phase,tasks),full=pct===100;
+  return(
+    <div style={{background:"#141414",border:`1px solid ${full?ACCENT+"44":"#1e1e1e"}`,borderRadius:"10px",overflow:"hidden",marginBottom:"8px",transition:"border-color 0.3s"}}>
+      <div onClick={onToggle} style={{padding:"13px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:"10px",background:isOpen?"#1a1a1a":"transparent",transition:"background 0.15s",WebkitTapHighlightColor:"transparent"}}>
+        <div style={{width:"32px",height:"32px",borderRadius:"7px",background:full?ACCENT:"#1a1a1a",border:`2px solid ${full?ACCENT:"#2a2a2a"}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"14px",color:full?"#fff":"#555",flexShrink:0,transition:"all 0.3s"}}>
+          {full?"✓":phase.num}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"14px",color:"#ddd",letterSpacing:"1px",marginBottom:"5px"}}>PHASE {phase.num} — {phase.label}</div>
+          <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+            <div style={{flex:1,height:"4px",background:"#1e1e1e",borderRadius:"2px",overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${pct}%`,background:full?ACCENT:`linear-gradient(90deg,#8B3A08,${ACCENT})`,transition:"width 0.4s",borderRadius:"2px"}}/>
+            </div>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"12px",color:full?ACCENT:"#444",minWidth:"32px",textAlign:"right"}}>{pct}%</span>
+          </div>
+        </div>
+        <span style={{color:"#333",fontSize:"18px",display:"inline-block",transform:isOpen?"rotate(90deg)":"none",transition:"transform 0.2s",flexShrink:0}}>›</span>
+      </div>
+      {isOpen&&(
+        <div className="anim-down">
+          {phase.steps.map(step=>(
+            <StepRow key={step.id} step={step}
+              tasks={tasks[step.id]||[]} stepData={steps[step.id]||{startDate:"",completeDate:"",notes:""}}
+              onToggleTask={i=>onToggleTask(step.id,i)} onSaveStep={onSaveStep}
+              isOpen={!!openSteps[step.id]} onToggleOpen={()=>onToggleStep(step.id)}/>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectView({pm,project,projectId,onSave,onBack}){
+  const [data,setData]=useState(project);
+  const timer=useRef(null);
+  useEffect(()=>{clearTimeout(timer.current);timer.current=setTimeout(()=>{lsSet(KEY_PROJECT(pm,projectId),data);onSave(data);},400);},[data]);
+  const toggleTask=(sid,i)=>setData(p=>({...p,tasks:{...p.tasks,[sid]:p.tasks[sid].map((v,j)=>j===i?!v:v)}}));
+  const saveStep=(sid,d)=>setData(p=>({...p,steps:{...p.steps,[sid]:{...p.steps[sid],...d}}}));
+  const togglePhase=id=>setData(p=>({...p,openPhases:{...p.openPhases,[id]:!p.openPhases[id]}}));
+  const toggleStep=id=>setData(p=>({...p,openSteps:{...p.openSteps,[id]:!p.openSteps[id]}}));
+  const overall=calcProgress(data.tasks);
+  const allSteps=PHASES.flatMap(p=>p.steps);
+  const doneTasks=PHASES.flatMap(p=>p.steps.flatMap(s=>s.tasks.map((_,i)=>data.tasks[s.id]?.[i]))).filter(Boolean).length;
+  const totalTasks=PHASES.flatMap(p=>p.steps.flatMap(s=>s.tasks)).length;
+  const doneSteps=allSteps.filter(s=>data.tasks[s.id]?.every(Boolean)).length;
+  const donePhases=PHASES.filter(p=>phasePct(p,data.tasks)===100).length;
+  return(
+    <div style={{minHeight:"100vh",background:"#0f0f0f"}}>
+      <div style={{background:"#111",borderBottom:`2px solid ${ACCENT}`,position:"sticky",top:0,zIndex:100}}>
+        <div style={{maxWidth:"680px",margin:"0 auto",padding:"10px 14px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"9px"}}>
+            <button onClick={onBack} style={{background:"none",border:"none",color:ACCENT,fontSize:"26px",cursor:"pointer",padding:"0",lineHeight:1,WebkitTapHighlightColor:"transparent"}}>‹</button>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"16px",color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.2}}>{data.name}</div>
+              {data.address&&<div style={{fontSize:"11px",color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{data.address}</div>}
+            </div>
+            <div style={{background:ACCENT,borderRadius:"6px",padding:"4px 10px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"14px",color:"#fff",flexShrink:0}}>{overall}%</div>
+          </div>
+          <div style={{height:"5px",background:"#1e1e1e",borderRadius:"3px",overflow:"hidden",marginBottom:"7px"}}>
+            <div style={{height:"100%",width:`${overall}%`,background:`linear-gradient(90deg,#8B3A08,${ACCENT},${ACCENT2})`,transition:"width 0.5s",borderRadius:"3px"}}/>
+          </div>
+          <div style={{display:"flex",gap:"14px",alignItems:"center"}}>
+            {[[`${doneTasks}/${totalTasks}`,"TASKS"],[`${doneSteps}/${allSteps.length}`,"STEPS"],[`${donePhases}/${PHASES.length}`,"PHASES"]].map(([v,l])=>(
+              <div key={l} style={{display:"flex",alignItems:"baseline",gap:"3px"}}>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"13px",color:ACCENT}}>{v}</span>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:"10px",color:"#444",letterSpacing:"1px"}}>{l}</span>
+              </div>
+            ))}
+            <span style={{marginLeft:"auto",fontFamily:"'Barlow Condensed',sans-serif",fontSize:"10px",color:"#333",letterSpacing:"1px"}}>PM: {pm.toUpperCase()}</span>
+          </div>
+        </div>
+      </div>
+      <div style={{maxWidth:"680px",margin:"0 auto",padding:"14px"}}>
+        {PHASES.map(phase=>(
+          <PhaseCard key={phase.id} phase={phase} tasks={data.tasks} steps={data.steps}
+            onToggleTask={toggleTask} onSaveStep={saveStep}
+            isOpen={!!data.openPhases[phase.id]} onToggle={()=>togglePhase(phase.id)}
+            openSteps={data.openSteps} onToggleStep={toggleStep}/>
+        ))}
+        {overall===100&&(
+          <div className="anim-fade" style={{background:"linear-gradient(135deg,#1a0d06,#2a1508)",border:`1px solid ${ACCENT}`,borderRadius:"10px",padding:"24px",textAlign:"center",marginTop:"8px"}}>
+            <div style={{fontSize:"32px",marginBottom:"8px"}}>🏆</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"22px",color:ACCENT,letterSpacing:"2px",marginBottom:"4px"}}>PROJECT COMPLETE</div>
+            <div style={{color:"#666",fontSize:"13px"}}>All phases cleared. Outstanding work, {pm}.</div>
+          </div>
+        )}
+        <div style={{height:"40px"}}/>
+      </div>
+    </div>
+  );
+}
+
+function ProjectList({pm,projects,onSelect,onAdd,onDelete,onSwitchPM}){
+  const [showAdd,setShowAdd]=useState(false);
+  const [name,setName]=useState("");
+  const [addr,setAddr]=useState("");
+  function handleAdd(){if(!name.trim())return;onAdd(name.trim(),addr.trim());setName("");setAddr("");setShowAdd(false);}
+  return(
+    <div style={{minHeight:"100vh",background:"#0f0f0f"}}>
+      <div style={{background:"#111",borderBottom:`2px solid ${ACCENT}`}}>
+        <div style={{maxWidth:"600px",margin:"0 auto",padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+            <div style={{background:ACCENT,width:"36px",height:"36px",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"15px",color:"#fff",flexShrink:0}}>WRB</div>
+            <div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"16px",color:"#fff",letterSpacing:"1px",lineHeight:1.1}}>FULL GUT / NEW CONSTRUCTION</div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:"10px",color:ACCENT,letterSpacing:"2px"}}>WR BUILDERS INC</div>
+            </div>
+          </div>
+          <button onClick={onSwitchPM} style={{background:"none",border:"1px solid #2a2a2a",borderRadius:"6px",padding:"6px 12px",color:"#555",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>SWITCH PM</button>
+        </div>
+      </div>
+      <div style={{maxWidth:"600px",margin:"0 auto",padding:"16px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"18px",padding:"13px 14px",background:"#141414",border:"1px solid #1e1e1e",borderRadius:"8px"}}>
+          <div style={{width:"38px",height:"38px",borderRadius:"50%",background:ACCENT,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"17px",color:"#fff",flexShrink:0}}>{pm.charAt(0).toUpperCase()}</div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"16px",color:"#e0e0e0"}}>{pm}</div>
+            <div style={{fontSize:"11px",color:"#444"}}>{projects.length} active project{projects.length!==1?"s":""}</div>
+          </div>
+          <button onClick={()=>setShowAdd(true)} style={{background:ACCENT,border:"none",borderRadius:"7px",padding:"9px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"13px",letterSpacing:"1px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>+ NEW PROJECT</button>
+        </div>
+        {projects.length===0?(
+          <div style={{textAlign:"center",padding:"56px 0"}}>
+            <div style={{fontSize:"36px",marginBottom:"12px"}}>📋</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:"15px",letterSpacing:"1px",color:"#333",marginBottom:"6px"}}>NO PROJECTS YET</div>
+            <div style={{fontSize:"12px",color:"#2a2a2a"}}>Tap + NEW PROJECT to get started</div>
+          </div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+            {projects.map(proj=>{
+              const pct=calcProgress(proj.data.tasks),full=pct===100;
+              return(
+                <div key={proj.id} onClick={()=>onSelect(proj.id)} style={{background:"#141414",border:`1px solid ${full?ACCENT+"44":"#1e1e1e"}`,borderRadius:"10px",padding:"14px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:"10px",marginBottom:"10px"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"15px",color:"#e0e0e0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:"2px"}}>{proj.data.name}</div>
+                      {proj.data.address&&<div style={{fontSize:"11px",color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj.data.address}</div>}
+                      <div style={{fontSize:"10px",color:"#2a2a2a",marginTop:"2px",fontFamily:"'Barlow Condensed',sans-serif"}}>Created {proj.data.createdAt}</div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:"8px",flexShrink:0}}>
+                      {full&&<span style={{fontSize:"14px"}}>🏆</span>}
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"22px",color:full?ACCENT:"#ddd",lineHeight:1}}>{pct}%</div>
+                      <button onClick={e=>{e.stopPropagation();if(window.confirm(`Delete "${proj.data.name}"?`))onDelete(proj.id);}} style={{background:"none",border:"1px solid #2a2a2a",borderRadius:"5px",color:"#444",padding:"5px 9px",fontSize:"10px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",WebkitTapHighlightColor:"transparent"}}>DEL</button>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:"3px",marginBottom:"3px"}}>
+                    {PHASES.map(ph=>{const p=phasePct(ph,proj.data.tasks);return(
+                      <div key={ph.id} style={{flex:1,height:"4px",background:"#1e1e1e",borderRadius:"2px",overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${p}%`,background:p===100?ACCENT:"#444",borderRadius:"2px"}}/>
+                      </div>
+                    );})}
+                  </div>
+                  <div style={{display:"flex",gap:"3px"}}>
+                    {PHASES.map(ph=><div key={ph.id} style={{flex:1,textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:"8px",color:"#2a2a2a"}}>P{ph.num}</div>)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {showAdd&&(
+        <Modal title="NEW PROJECT" onClose={()=>setShowAdd(false)}>
+          <div style={{marginBottom:"12px"}}>
+            <div style={{color:"#555",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1.5px",marginBottom:"6px"}}>PROJECT NAME *</div>
+            <input autoFocus value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleAdd()} placeholder="e.g. Williams Full Gut Renovation"
+              style={{width:"100%",background:"#0f0f0f",border:"1px solid #2a2a2a",borderRadius:"6px",padding:"10px 12px",color:"#ddd",fontSize:"14px",outline:"none",fontFamily:"'Barlow',sans-serif",marginBottom:"12px"}}/>
+            <div style={{color:"#555",fontSize:"10px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1.5px",marginBottom:"6px"}}>JOB ADDRESS (OPTIONAL)</div>
+            <input value={addr} onChange={e=>setAddr(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleAdd()} placeholder="e.g. 789 Elm St, Newton MA"
+              style={{width:"100%",background:"#0f0f0f",border:"1px solid #2a2a2a",borderRadius:"6px",padding:"10px 12px",color:"#ddd",fontSize:"14px",outline:"none",fontFamily:"'Barlow',sans-serif"}}/>
+          </div>
+          <div style={{display:"flex",gap:"8px",justifyContent:"flex-end",marginTop:"16px"}}>
+            <button onClick={()=>setShowAdd(false)} style={{padding:"9px 14px",background:"none",border:"1px solid #333",borderRadius:"6px",color:"#888",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1px",cursor:"pointer"}}>CANCEL</button>
+            <button onClick={handleAdd} style={{padding:"9px 20px",background:name.trim()?ACCENT:"#3a2010",border:"none",borderRadius:"6px",color:name.trim()?"#fff":"#555",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"1px",cursor:"pointer",transition:"all 0.2s"}}>CREATE PROJECT</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function PMLogin({onSelect}){
+  const [pms,setPMs]=useState(null);
+  const [name,setName]=useState("");
+  const [adding,setAdding]=useState(false);
+  useEffect(()=>{setPMs(lsGet(KEY_PMS)||[]);},[]);
+  function addPM(){
+    const n=name.trim();if(!n||!pms)return;
+    const exists=pms.find(p=>p.toLowerCase()===n.toLowerCase());
+    if(!exists){const u=[...pms,n];lsSet(KEY_PMS,u);setPMs(u);}
+    setName("");setAdding(false);onSelect(exists||n);
+  }
+  if(pms===null)return<div style={{minHeight:"100vh",background:"#0f0f0f",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#333",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"3px",fontSize:"13px"}}>LOADING...</span></div>;
+  return(
+    <div style={{minHeight:"100vh",background:"#0f0f0f",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px"}}>
+      <div style={{marginBottom:"32px",textAlign:"center"}}>
+        <div style={{background:ACCENT,width:"60px",height:"60px",borderRadius:"14px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"22px",color:"#fff",margin:"0 auto 14px"}}>WRB</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"20px",color:"#fff",letterSpacing:"2px",lineHeight:1.3}}>FULL GUT / NEW CONSTRUCTION</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:"12px",color:ACCENT,letterSpacing:"2px",marginTop:"4px"}}>PM CHECKLIST — WR BUILDERS INC</div>
+      </div>
+      <div style={{width:"100%",maxWidth:"360px"}}>
+        {pms.length>0&&(
+          <>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:"10px",color:"#333",letterSpacing:"2px",marginBottom:"10px",textAlign:"center"}}>SELECT YOUR NAME</div>
+            <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"10px"}}>
+              {pms.map(pm=>(
+                <button key={pm} onClick={()=>onSelect(pm)} style={{width:"100%",background:"#141414",border:"1px solid #1e1e1e",borderRadius:"8px",padding:"13px 16px",color:"#ddd",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"16px",letterSpacing:"1px",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:"12px",WebkitTapHighlightColor:"transparent"}}>
+                  <div style={{width:"32px",height:"32px",borderRadius:"50%",background:ACCENT,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px",fontWeight:800,color:"#fff",flexShrink:0}}>{pm.charAt(0).toUpperCase()}</div>
+                  {pm}
+                  <span style={{marginLeft:"auto",color:"#333",fontSize:"18px"}}>›</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        {adding?(
+          <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:"8px",padding:"14px"}}>
+            <input autoFocus value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addPM()} placeholder="Enter your name..."
+              style={{width:"100%",background:"#0f0f0f",border:"1px solid #2a2a2a",borderRadius:"6px",padding:"11px 12px",color:"#ddd",fontSize:"15px",outline:"none",fontFamily:"'Barlow',sans-serif",marginBottom:"10px"}}/>
+            <div style={{display:"flex",gap:"6px"}}>
+              <button onClick={()=>{setAdding(false);setName("");}} style={{flex:1,padding:"10px",background:"none",border:"1px solid #2a2a2a",borderRadius:"6px",color:"#666",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"1px",cursor:"pointer"}}>CANCEL</button>
+              <button onClick={addPM} style={{flex:2,padding:"10px",background:name.trim()?ACCENT:"#3a2010",border:"none",borderRadius:"6px",color:name.trim()?"#fff":"#555",fontSize:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"1px",cursor:"pointer"}}>CONTINUE →</button>
+            </div>
+          </div>
+        ):(
+          <button onClick={()=>setAdding(true)} style={{width:"100%",background:"none",border:"1px dashed #2a2a2a",borderRadius:"8px",padding:"13px",color:"#444",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"13px",letterSpacing:"1.5px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>+ ADD NEW PM</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function App(){
+  const [pm,setPM]=useState(()=>sessionStorage.getItem("wrb_fg_session")||null);
+  const [projects,setProjects]=useState(null);
+  const [activeId,setActiveId]=useState(null);
+  useEffect(()=>{
+    if(!pm){setProjects(null);setActiveId(null);return;}
+    sessionStorage.setItem("wrb_fg_session",pm);
+    const ids=lsGet(KEY_PROJECTS(pm))||[];
+    setProjects(ids.map(id=>({id,data:lsGet(KEY_PROJECT(pm,id))})).filter(p=>p.data!==null));
+  },[pm]);
+  function addProject(name,address){
+    const id=`p_${Date.now()}`,data=freshProject(name,address);
+    lsSet(KEY_PROJECT(pm,id),data);
+    const ex=lsGet(KEY_PROJECTS(pm))||[];
+    lsSet(KEY_PROJECTS(pm),[...ex,id]);
+    setProjects(prev=>[...(prev||[]),{id,data}]);
+    setActiveId(id);
+  }
+  function deleteProject(id){
+    const u=projects.filter(p=>p.id!==id);
+    setProjects(u);lsSet(KEY_PROJECTS(pm),u.map(p=>p.id));
+  }
+  function updateProject(id,data){setProjects(prev=>prev.map(p=>p.id===id?{...p,data}:p));}
+  function switchPM(){sessionStorage.removeItem("wrb_fg_session");setPM(null);}
+  if(!pm)return<PMLogin onSelect={setPM}/>;
+  if(!projects)return<div style={{minHeight:"100vh",background:"#0f0f0f",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#333",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"3px",fontSize:"13px"}}>LOADING...</span></div>;
+  if(activeId){
+    const proj=projects.find(p=>p.id===activeId);
+    if(!proj){setActiveId(null);return null;}
+    return<ProjectView pm={pm} project={proj.data} projectId={proj.id} onSave={d=>updateProject(proj.id,d)} onBack={()=>setActiveId(null)}/>;
+  }
+  return<ProjectList pm={pm} projects={projects} onSelect={setActiveId} onAdd={addProject} onDelete={deleteProject} onSwitchPM={switchPM}/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
